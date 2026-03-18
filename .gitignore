@@ -206,3 +206,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 !frontend/lib/
+
+# doc-digest runtime data
+backend/data/
+
