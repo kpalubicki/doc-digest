@@ -5,7 +5,7 @@ from pathlib import Path
 class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     embed_model: str = "nomic-embed-text"
-    chat_model: str = "qwen2.5:3b-instruct"
+    chat_model: str = "qwen2.5:3b"
     chroma_path: str = "./data/chroma"
     upload_path: str = "./data/uploads"
     app_port: int = 8000

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { uploadDocument, DocumentInfo } from "@/lib/api";
+import { Upload } from "lucide-react";
 
 interface Props {
   onUploaded: (doc: DocumentInfo) => void;
@@ -38,10 +39,12 @@ export default function UploadZone({ onUploaded }: Props) {
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
-      onClick={() => inputRef.current?.click()}
-      className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-        dragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"
-      }`}
+      onClick={() => !uploading && inputRef.current?.click()}
+      className="rounded-xl p-4 text-center cursor-pointer transition-all border-2 border-dashed"
+      style={{
+        background: dragging ? "rgba(124,58,237,0.08)" : "var(--surface-2)",
+        borderColor: dragging ? "var(--accent)" : "var(--border)",
+      }}
     >
       <input
         ref={inputRef}
@@ -51,14 +54,25 @@ export default function UploadZone({ onUploaded }: Props) {
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
       />
       {uploading ? (
-        <p className="text-sm text-gray-500">Uploading...</p>
+        <div className="flex items-center justify-center gap-2 py-1">
+          <div
+            className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
+            style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }}
+          />
+          <span className="text-xs" style={{ color: "var(--text-muted)" }}>Uploading…</span>
+        </div>
       ) : (
-        <>
-          <p className="text-sm text-gray-600">Drop a file here or click to browse</p>
-          <p className="text-xs text-gray-400 mt-1">PDF, TXT, MD</p>
-        </>
+        <div className="py-1">
+          <Upload size={16} className="mx-auto mb-1.5" style={{ color: "var(--text-subtle)" }} />
+          <p className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+            Drop file or click to browse
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-subtle)" }}>PDF · TXT · MD</p>
+        </div>
       )}
-      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+      {error && (
+        <p className="text-xs mt-2" style={{ color: "#ef4444" }}>{error}</p>
+      )}
     </div>
   );
 }
