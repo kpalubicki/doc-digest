@@ -1,45 +1,25 @@
 # doc-digest
 
-Upload a document. Ask questions about it. Get answers with source citations.
+I kept copy-pasting chunks of PDFs into ChatGPT to ask questions about contracts and specs. It worked, mostly, but it felt wrong — sending documents to an external API, hitting context limits, losing the thread between sessions. So I built a local version.
 
-Runs entirely on your machine — Ollama handles the embeddings and the LLM. No API keys, no data sent anywhere.
+Upload a file, ask questions, get answers with citations back to the actual source text. Ollama handles the embeddings and the LLM. Nothing leaves your machine.
 
-![Python](https://img.shields.io/badge/python-3.11+-blue) ![Next.js](https://img.shields.io/badge/next.js-16-black) ![Ollama](https://img.shields.io/badge/ollama-local-green)
+## how it works
 
----
+Drop a file into the sidebar. The backend splits it into chunks, embeds them with `nomic-embed-text`, and stores everything in ChromaDB locally. Ask a question and it finds the closest chunks, passes them as context to `qwen2.5:3b`, and returns an answer alongside the source excerpts it used.
 
-## Why
+You can chat against all your documents at once, or pin the conversation to one file.
 
-I got tired of copy-pasting chunks of PDFs into ChatGPT every time I had a question about a contract or a technical spec. This does the same thing but runs offline and keeps your files on your own hardware.
+## quick start
 
-## How it works
-
-1. Drop a PDF, TXT, or Markdown file into the sidebar
-2. The backend splits it into chunks, embeds them with `nomic-embed-text`, stores them in ChromaDB
-3. You ask a question — it finds the most relevant chunks, passes them as context to `qwen2.5:3b`, and returns an answer with source references
-
-You can query across all uploaded documents at once, or pin the chat to a specific file.
-
----
-
-## Stack
-
-- **Backend** — Python 3.11+, FastAPI, ChromaDB, Ollama, PyPDF
-- **Frontend** — Next.js 16, TypeScript, Tailwind CSS
-- **Models** — `nomic-embed-text` (embeddings), `qwen2.5:3b` (chat)
-
----
-
-## Quick start
-
-You need [Ollama](https://ollama.ai/) installed and running.
+Needs Ollama running. Pull the two models first:
 
 ```bash
 ollama pull nomic-embed-text
 ollama pull qwen2.5:3b
 ```
 
-**Backend:**
+Backend:
 
 ```bash
 cd backend
@@ -47,7 +27,7 @@ pip install fastapi uvicorn python-multipart pypdf chromadb ollama python-dotenv
 uvicorn app.main:app --reload
 ```
 
-**Frontend:**
+Frontend:
 
 ```bash
 cd frontend
@@ -55,22 +35,20 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000.
 
-**Or use Docker:**
+Docker works too:
 
 ```bash
 cp .env.example backend/.env
 docker compose up --build
 ```
 
-Ollama needs to be running on the host. The Docker setup connects via `host.docker.internal`.
+The compose file connects to Ollama via `host.docker.internal`, so Ollama needs to be running on the host, not in a container.
 
----
+## configuration
 
-## Configuration
-
-Edit `backend/.env`:
+`backend/.env`:
 
 ```bash
 OLLAMA_BASE_URL=http://localhost:11434
@@ -80,11 +58,9 @@ CHROMA_PATH=./data/chroma
 UPLOAD_PATH=./data/uploads
 ```
 
-Swap the models for anything else you have pulled locally — the only requirement is Ollama compatibility.
+Any Ollama-compatible model works. `llama3.2:3b` is a reasonable alternative if you want something lighter.
 
----
-
-## Tests
+## tests
 
 ```bash
 cd backend
@@ -92,11 +68,9 @@ pip install pytest httpx
 pytest tests/ -v
 ```
 
----
-
 ## API
 
-Swagger UI at [http://localhost:8000/docs](http://localhost:8000/docs)
+Swagger at http://localhost:8000/docs
 
 ```
 POST   /documents        upload a file
@@ -106,8 +80,10 @@ DELETE /documents/{id}   remove document and embeddings
 POST   /chat             ask a question
 ```
 
----
+## stack
 
-## License
+Python 3.11+, FastAPI, ChromaDB, Ollama, PyPDF, Next.js 16, TypeScript, Tailwind
+
+## license
 
 MIT
