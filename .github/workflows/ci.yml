@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: set up python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: install dependencies
+        run: |
+          cd backend
+          pip install fastapi uvicorn python-multipart pypdf chromadb ollama python-dotenv aiofiles pydantic-settings pytest httpx pytest-asyncio
+
+      - name: run tests
+        run: |
+          cd backend
+          pytest tests/ -q --tb=short
