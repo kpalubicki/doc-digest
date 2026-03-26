@@ -54,3 +54,38 @@ export async function askQuestion(
   if (!res.ok) throw new Error("Chat request failed");
   return res.json();
 }
+
+export async function askQuestionStream(
+  question: string,
+  documentId: string | undefined,
+  onToken: (token: string) => void,
+  onDone: (sources: Source[]) => void
+): Promise<void> {
+  const res = await fetch(`${BASE}/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, document_id: documentId ?? null }),
+  });
+
+  if (!res.ok || !res.body) throw new Error("Stream request failed");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const payload = JSON.parse(line.slice(6));
+      if (payload.token) onToken(payload.token);
+      if (payload.done) onDone(payload.sources ?? []);
+    }
+  }
+}

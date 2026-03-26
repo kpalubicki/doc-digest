@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { askQuestion, ChatResponse } from "@/lib/api";
+import { askQuestionStream, ChatResponse } from "@/lib/api";
 import { Send, ChevronDown, BookOpen, User } from "lucide-react";
 
 interface Message {
@@ -35,20 +35,38 @@ export default function ChatBox({ documentId, documentName }: Props) {
     setInput("");
     setLoading(true);
 
+    // placeholder for streaming response
+    setMessages((prev) => [...prev, { role: "assistant", content: "", sources: [] }]);
+
     try {
-      const res = await askQuestion(q, documentId ?? undefined);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: res.answer, sources: res.sources },
-      ]);
+      await askQuestionStream(
+        q,
+        documentId ?? undefined,
+        (token) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            updated[updated.length - 1] = { ...last, content: last.content + token };
+            return updated;
+          });
+        },
+        (sources) => {
+          setMessages((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], sources };
+            return updated;
+          });
+        }
+      );
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
           role: "assistant",
           content: "Something went wrong — make sure Ollama is running and models are pulled.",
-        },
-      ]);
+        };
+        return updated;
+      });
     } finally {
       setLoading(false);
     }

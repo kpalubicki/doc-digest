@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
 from app.models.schemas import ChatRequest, ChatResponse
 from app.services import chat_service
@@ -14,4 +15,19 @@ def chat(request: ChatRequest):
         question=request.question,
         doc_id=request.document_id,
         n_results=request.n_results,
+    )
+
+
+@router.post("/stream")
+def chat_stream(request: ChatRequest):
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty")
+    return StreamingResponse(
+        chat_service.ask_stream(
+            question=request.question,
+            doc_id=request.document_id,
+            n_results=request.n_results,
+        ),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
