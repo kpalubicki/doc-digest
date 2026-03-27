@@ -78,6 +78,7 @@ GET    /documents        list all documents
 GET    /documents/{id}   document info
 DELETE /documents/{id}   remove document and embeddings
 POST   /chat             ask a question
+POST   /chat/stream      same, but streamed as SSE
 ```
 
 ## stack

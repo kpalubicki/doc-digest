@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { askQuestionStream, ChatResponse } from "@/lib/api";
-import { Send, ChevronDown, BookOpen, User } from "lucide-react";
+import { exportChatAsMarkdown } from "@/lib/export";
+import { Send, ChevronDown, BookOpen, User, Download } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -93,6 +94,18 @@ export default function ChatBox({ documentId, documentName }: Props) {
         <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
           {documentName ?? "All documents"}
         </span>
+
+        {messages.length > 0 && (
+          <button
+            onClick={() => exportChatAsMarkdown(messages, documentName)}
+            className="ml-auto flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--text-subtle)", background: "var(--surface-2)" }}
+            title="Export chat as Markdown"
+          >
+            <Download size={12} />
+            export
+          </button>
+        )}
       </div>
 
       {/* Messages */}
