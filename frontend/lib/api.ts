@@ -83,9 +83,13 @@ export async function askQuestionStream(
 
     for (const line of lines) {
       if (!line.startsWith("data: ")) continue;
-      const payload = JSON.parse(line.slice(6));
-      if (payload.token) onToken(payload.token);
-      if (payload.done) onDone(payload.sources ?? []);
+      try {
+        const payload = JSON.parse(line.slice(6));
+        if (payload.token) onToken(payload.token);
+        if (payload.done) onDone(payload.sources ?? []);
+      } catch {
+        // malformed SSE chunk, skip
+      }
     }
   }
 }

@@ -1,8 +1,8 @@
 # doc-digest
 
-I kept copy-pasting chunks of PDFs into ChatGPT to ask questions about contracts and specs. It worked, mostly, but it felt wrong — sending documents to an external API, hitting context limits, losing the thread between sessions. So I built a local version.
+Pasting a 40-page PDF into ChatGPT burns through tokens fast and you hit context limits before you're done. The document also ends up on someone else's server. Running it locally on Ollama is free and nothing leaves your machine.
 
-Upload a file, ask questions, get answers with citations back to the actual source text. Ollama handles the embeddings and the LLM. Nothing leaves your machine.
+Upload a file, ask questions, get answers with citations back to the source text.
 
 ## how it works
 
@@ -80,6 +80,17 @@ DELETE /documents/{id}   remove document and embeddings
 POST   /chat             ask a question
 POST   /chat/stream      same, but streamed as SSE
 ```
+
+## troubleshooting
+
+**"Something went wrong — make sure Ollama is running"**
+Ollama isn't running or the model isn't pulled. Run `ollama serve` and then `ollama pull qwen2.5:3b && ollama pull nomic-embed-text`.
+
+**Port 8000 or 3000 already in use**
+Set `APP_PORT=8001` in `backend/.env` and update `NEXT_PUBLIC_API_URL=http://localhost:8001` in `frontend/.env.local`.
+
+**Docker: Ollama not reachable from container**
+The compose file uses `host.docker.internal` which works on Windows and Mac. On Linux, replace it with your host IP or run Ollama inside Docker too.
 
 ## stack
 
