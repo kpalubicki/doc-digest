@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.api import documents, chat
+from app.api.auth import require_api_key
 
 
 @asynccontextmanager
@@ -26,8 +27,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(documents.router, prefix="/documents", tags=["documents"])
-app.include_router(chat.router, prefix="/chat", tags=["chat"])
+app.include_router(documents.router, prefix="/documents", tags=["documents"],
+                   dependencies=[Depends(require_api_key)])
+app.include_router(chat.router, prefix="/chat", tags=["chat"],
+                   dependencies=[Depends(require_api_key)])
 
 
 @app.get("/health")

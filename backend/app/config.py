@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     chroma_path: str = "./data/chroma"
     upload_path: str = "./data/uploads"
     app_port: int = 8000
+    api_key: str | None = None
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

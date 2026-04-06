@@ -69,3 +69,39 @@ def test_chat_returns_answer():
         response = client.post("/chat", json={"question": "what does it say?"})
         assert response.status_code == 200
         assert "answer" in response.json()
+
+
+# --- API key auth tests ---
+
+def test_no_auth_when_key_not_configured():
+    # API_KEY unset → all requests pass through
+    with patch("app.api.documents.document_service.list_documents", return_value=[]):
+        r = client.get("/documents")
+    assert r.status_code == 200
+
+
+def test_rejects_request_without_key(monkeypatch):
+    monkeypatch.setattr("app.api.auth.settings", type("S", (), {"api_key": "secret"})())
+    with patch("app.api.documents.document_service.list_documents", return_value=[]):
+        r = client.get("/documents")
+    assert r.status_code == 401
+
+
+def test_rejects_wrong_key(monkeypatch):
+    monkeypatch.setattr("app.api.auth.settings", type("S", (), {"api_key": "secret"})())
+    with patch("app.api.documents.document_service.list_documents", return_value=[]):
+        r = client.get("/documents", headers={"X-API-Key": "wrong"})
+    assert r.status_code == 401
+
+
+def test_accepts_correct_key(monkeypatch):
+    monkeypatch.setattr("app.api.auth.settings", type("S", (), {"api_key": "secret"})())
+    with patch("app.api.documents.document_service.list_documents", return_value=[]):
+        r = client.get("/documents", headers={"X-API-Key": "secret"})
+    assert r.status_code == 200
+
+
+def test_health_no_auth_required():
+    # /health is public regardless of key config
+    r = client.get("/health")
+    assert r.status_code == 200
