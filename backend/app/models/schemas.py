@@ -23,6 +23,7 @@ class ChatRequest(BaseModel):
     question: str
     document_id: Optional[str] = None  # None = search across all docs
     n_results: int = 4
+    collection: str = "default"
 
 
 class Source(BaseModel):

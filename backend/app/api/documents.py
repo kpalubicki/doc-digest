@@ -1,20 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, Form, UploadFile, File, HTTPException
 
 from app.models.schemas import DocumentInfo, DocumentList, DeleteResponse
 from app.services import document_service, vector_store
+from app.services.vector_store import DEFAULT_COLLECTION
 
 router = APIRouter()
 
 
 @router.post("", response_model=DocumentInfo)
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    collection: str = Form(default=DEFAULT_COLLECTION),
+):
     data = await file.read()
     try:
         doc_id, chunks, filename = await document_service.save_and_parse(file.filename, data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    vector_store.add_chunks(doc_id, filename, chunks)
+    vector_store.add_chunks(doc_id, filename, chunks, collection_name=collection)
 
     doc = document_service.get_document(doc_id)
     return DocumentInfo(**doc)
@@ -38,8 +42,8 @@ def get_document(doc_id: str):
 
 
 @router.delete("/{doc_id}", response_model=DeleteResponse)
-def delete_document(doc_id: str):
-    vector_store.delete_chunks(doc_id)
+def delete_document(doc_id: str, collection: str = DEFAULT_COLLECTION):
+    vector_store.delete_chunks(doc_id, collection_name=collection)
     deleted = document_service.delete_document(doc_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Document not found")

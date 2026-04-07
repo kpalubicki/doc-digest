@@ -4,7 +4,7 @@ from typing import Generator
 import ollama
 
 from app.config import settings
-from app.services.vector_store import search
+from app.services.vector_store import search, DEFAULT_COLLECTION
 from app.models.schemas import ChatResponse, Source
 
 
@@ -30,8 +30,9 @@ def _build_sources(hits: list[dict]) -> list[Source]:
     ]
 
 
-def ask(question: str, doc_id: str | None = None, n_results: int = 4) -> ChatResponse:
-    hits = search(question, doc_id=doc_id, n_results=n_results)
+def ask(question: str, doc_id: str | None = None, n_results: int = 4,
+        collection_name: str = DEFAULT_COLLECTION) -> ChatResponse:
+    hits = search(question, doc_id=doc_id, n_results=n_results, collection_name=collection_name)
 
     if not hits:
         return ChatResponse(
@@ -53,9 +54,10 @@ def ask(question: str, doc_id: str | None = None, n_results: int = 4) -> ChatRes
     return ChatResponse(answer=response.message.content.strip(), sources=_build_sources(hits))
 
 
-def ask_stream(question: str, doc_id: str | None = None, n_results: int = 4) -> Generator[str, None, None]:
+def ask_stream(question: str, doc_id: str | None = None, n_results: int = 4,
+               collection_name: str = DEFAULT_COLLECTION) -> Generator[str, None, None]:
     """Stream answer token by token as SSE events, then emit sources as the final event."""
-    hits = search(question, doc_id=doc_id, n_results=n_results)
+    hits = search(question, doc_id=doc_id, n_results=n_results, collection_name=collection_name)
 
     if not hits:
         yield f"data: {json.dumps({'token': 'No relevant content found in the uploaded documents.'})}\n\n"

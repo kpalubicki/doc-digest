@@ -4,22 +4,27 @@ import ollama
 
 from app.config import settings
 
+DEFAULT_COLLECTION = "default"
+
 _client: chromadb.ClientAPI | None = None
-_collection = None
 
 
-def _get_collection():
-    global _client, _collection
-    if _collection is None:
+def _get_client() -> chromadb.ClientAPI:
+    global _client
+    if _client is None:
         _client = chromadb.PersistentClient(
             path=settings.chroma_path,
             settings=ChromaSettings(anonymized_telemetry=False),
         )
-        _collection = _client.get_or_create_collection(
-            name="documents",
-            metadata={"hnsw:space": "cosine"},
-        )
-    return _collection
+    return _client
+
+
+def _get_collection(collection_name: str = DEFAULT_COLLECTION):
+    client = _get_client()
+    return client.get_or_create_collection(
+        name=collection_name,
+        metadata={"hnsw:space": "cosine"},
+    )
 
 
 def _embed(texts: list[str]) -> list[list[float]]:
@@ -27,16 +32,34 @@ def _embed(texts: list[str]) -> list[list[float]]:
     return response.embeddings
 
 
-def add_chunks(doc_id: str, filename: str, chunks: list[str]):
-    collection = _get_collection()
+def list_collections() -> list[str]:
+    """Return names of all existing collections."""
+    return [c.name for c in _get_client().list_collections()]
+
+
+def delete_collection(collection_name: str) -> bool:
+    """Delete an entire collection. Returns False if it didn't exist."""
+    client = _get_client()
+    existing = [c.name for c in client.list_collections()]
+    if collection_name not in existing:
+        return False
+    client.delete_collection(collection_name)
+    return True
+
+
+def add_chunks(doc_id: str, filename: str, chunks: list[str],
+               collection_name: str = DEFAULT_COLLECTION):
+    collection = _get_collection(collection_name)
     embeddings = _embed(chunks)
     ids = [f"{doc_id}_{i}" for i in range(len(chunks))]
-    metadatas = [{"doc_id": doc_id, "filename": filename, "chunk_index": i} for i in range(len(chunks))]
+    metadatas = [{"doc_id": doc_id, "filename": filename, "chunk_index": i}
+                 for i in range(len(chunks))]
     collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
 
 
-def search(query: str, doc_id: str | None = None, n_results: int = 4) -> list[dict]:
-    collection = _get_collection()
+def search(query: str, doc_id: str | None = None, n_results: int = 4,
+           collection_name: str = DEFAULT_COLLECTION) -> list[dict]:
+    collection = _get_collection(collection_name)
     where = {"doc_id": doc_id} if doc_id else None
     query_embedding = _embed([query])[0]
 
@@ -62,8 +85,8 @@ def search(query: str, doc_id: str | None = None, n_results: int = 4) -> list[di
     return hits
 
 
-def delete_chunks(doc_id: str):
-    collection = _get_collection()
+def delete_chunks(doc_id: str, collection_name: str = DEFAULT_COLLECTION):
+    collection = _get_collection(collection_name)
     existing = collection.get(where={"doc_id": doc_id})
     if existing["ids"]:
         collection.delete(ids=existing["ids"])

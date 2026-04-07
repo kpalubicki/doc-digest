@@ -15,6 +15,7 @@ def chat(request: ChatRequest):
         question=request.question,
         doc_id=request.document_id,
         n_results=request.n_results,
+        collection_name=request.collection,
     )
 
 
@@ -27,6 +28,7 @@ def chat_stream(request: ChatRequest):
             question=request.question,
             doc_id=request.document_id,
             n_results=request.n_results,
+            collection_name=request.collection,
         ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
