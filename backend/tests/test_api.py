@@ -105,3 +105,64 @@ def test_health_no_auth_required():
     # /health is public regardless of key config
     r = client.get("/health")
     assert r.status_code == 200
+
+
+# --- /chat/export/markdown tests ---
+
+EXPORT_MESSAGES = [
+    {
+        "question": "What is the capital of France?",
+        "answer": "The capital of France is Paris.",
+        "sources": [{"document_id": "abc", "filename": "geo.pdf", "chunk": "France is in Western Europe."}],
+    },
+    {
+        "question": "How large is Paris?",
+        "answer": "Paris has a population of about 2 million in the city proper.",
+        "sources": [],
+    },
+]
+
+
+def test_export_markdown_returns_file():
+    r = client.post("/chat/export/markdown", json={"messages": EXPORT_MESSAGES})
+    assert r.status_code == 200
+    assert "text/markdown" in r.headers["content-type"]
+    assert ".md" in r.headers["content-disposition"]
+
+
+def test_export_markdown_contains_questions_and_answers():
+    r = client.post("/chat/export/markdown", json={"messages": EXPORT_MESSAGES})
+    text = r.text
+    assert "What is the capital of France?" in text
+    assert "The capital of France is Paris." in text
+    assert "How large is Paris?" in text
+    assert "2 million" in text
+
+
+def test_export_markdown_contains_sources():
+    r = client.post("/chat/export/markdown", json={"messages": EXPORT_MESSAGES})
+    assert "geo.pdf" in r.text
+
+
+def test_export_markdown_custom_title():
+    r = client.post("/chat/export/markdown", json={"messages": EXPORT_MESSAGES, "title": "My Research"})
+    assert "My Research" in r.text
+    assert "my-research.md" in r.headers["content-disposition"]
+
+
+def test_export_markdown_with_collection():
+    r = client.post("/chat/export/markdown", json={
+        "messages": EXPORT_MESSAGES,
+        "collection": "geography",
+    })
+    assert "geography" in r.text
+
+
+def test_export_markdown_empty_messages():
+    r = client.post("/chat/export/markdown", json={"messages": []})
+    assert r.status_code == 422
+
+
+def test_export_markdown_no_messages_field():
+    r = client.post("/chat/export/markdown", json={})
+    assert r.status_code == 422

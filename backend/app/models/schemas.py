@@ -35,3 +35,15 @@ class Source(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[Source]
+
+
+class ConversationMessage(BaseModel):
+    question: str
+    answer: str
+    sources: list[Source] = []
+
+
+class ConversationExportRequest(BaseModel):
+    messages: list[ConversationMessage]
+    title: Optional[str] = None
+    collection: Optional[str] = None
