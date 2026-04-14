@@ -84,6 +84,18 @@ def get_document(doc_id: str) -> Optional[dict]:
     return {"id": doc_id, **meta[doc_id]}
 
 
+def get_document_text(doc_id: str) -> str | None:
+    """Return full extracted text for a document, or None if not found."""
+    meta = _load_meta()
+    if doc_id not in meta:
+        return None
+    suffix = meta[doc_id]["file_type"]
+    file_path = Path(settings.upload_path) / f"{doc_id}{suffix}"
+    if not file_path.exists():
+        return None
+    return _extract_text(file_path, suffix)
+
+
 def delete_document(doc_id: str) -> bool:
     meta = _load_meta()
     if doc_id not in meta:

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Form, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
 
-from app.models.schemas import DocumentInfo, DocumentList, DeleteResponse
-from app.services import document_service, vector_store
+from app.models.schemas import DocumentInfo, DocumentList, DeleteResponse, SummarizeRequest, SummarizeResponse
+from app.services import chat_service, document_service, vector_store
 from app.services.vector_store import DEFAULT_COLLECTION
 
 router = APIRouter()
@@ -39,6 +40,37 @@ def get_document(doc_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return DocumentInfo(**doc)
+
+
+@router.post("/{doc_id}/summarize", response_model=SummarizeResponse)
+def summarize_document(doc_id: str, request: SummarizeRequest = SummarizeRequest()) -> SummarizeResponse:
+    """Summarize a document. style: concise | detailed | bullet-points"""
+    doc = document_service.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    text = document_service.get_document_text(doc_id)
+    if not text:
+        raise HTTPException(status_code=404, detail="Document file not found")
+    try:
+        return chat_service.summarize(doc_id, doc["filename"], text, style=request.style)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Model error: {e}") from e
+
+
+@router.post("/{doc_id}/summarize/stream")
+def summarize_document_stream(doc_id: str, request: SummarizeRequest = SummarizeRequest()) -> StreamingResponse:
+    """Stream document summary token by token as SSE."""
+    doc = document_service.get_document(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    text = document_service.get_document_text(doc_id)
+    if not text:
+        raise HTTPException(status_code=404, detail="Document file not found")
+    return StreamingResponse(
+        chat_service.summarize_stream(doc_id, doc["filename"], text, style=request.style),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.delete("/{doc_id}", response_model=DeleteResponse)

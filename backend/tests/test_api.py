@@ -50,6 +50,65 @@ def test_delete_document_not_found():
             assert response.status_code == 404
 
 
+# --- /documents/{id}/summarize tests ---
+
+FAKE_DOC = {"id": "abc123", "filename": "report.txt", "file_type": ".txt", "chunk_count": 5, "uploaded_at": "2026-01-01"}
+FAKE_SUMMARY_RESPONSE = MagicMock(
+    document_id="abc123",
+    filename="report.txt",
+    summary="This document discusses key findings.",
+    model="qwen2.5:3b",
+)
+
+
+def test_summarize_returns_summary():
+    with patch("app.api.documents.document_service.get_document", return_value=FAKE_DOC), \
+         patch("app.api.documents.document_service.get_document_text", return_value="Some document text."), \
+         patch("app.api.documents.chat_service.summarize", return_value=FAKE_SUMMARY_RESPONSE):
+        r = client.post("/documents/abc123/summarize", json={})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["document_id"] == "abc123"
+    assert data["summary"] == "This document discusses key findings."
+    assert data["model"] == "qwen2.5:3b"
+
+
+def test_summarize_not_found():
+    with patch("app.api.documents.document_service.get_document", return_value=None):
+        r = client.post("/documents/missing/summarize", json={})
+    assert r.status_code == 404
+
+
+def test_summarize_file_missing():
+    with patch("app.api.documents.document_service.get_document", return_value=FAKE_DOC), \
+         patch("app.api.documents.document_service.get_document_text", return_value=None):
+        r = client.post("/documents/abc123/summarize", json={})
+    assert r.status_code == 404
+
+
+def test_summarize_model_error():
+    with patch("app.api.documents.document_service.get_document", return_value=FAKE_DOC), \
+         patch("app.api.documents.document_service.get_document_text", return_value="text"), \
+         patch("app.api.documents.chat_service.summarize", side_effect=RuntimeError("model offline")):
+        r = client.post("/documents/abc123/summarize", json={})
+    assert r.status_code == 502
+    assert "model offline" in r.json()["detail"]
+
+
+def test_summarize_custom_style():
+    called_with = {}
+
+    def capture_summarize(doc_id, filename, text, style="concise"):
+        called_with["style"] = style
+        return FAKE_SUMMARY_RESPONSE
+
+    with patch("app.api.documents.document_service.get_document", return_value=FAKE_DOC), \
+         patch("app.api.documents.document_service.get_document_text", return_value="text"), \
+         patch("app.api.documents.chat_service.summarize", side_effect=capture_summarize):
+        client.post("/documents/abc123/summarize", json={"style": "bullet-points"})
+    assert called_with["style"] == "bullet-points"
+
+
 def test_chat_requires_question():
     response = client.post("/chat", json={})
     assert response.status_code == 422

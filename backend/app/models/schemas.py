@@ -37,6 +37,17 @@ class ChatResponse(BaseModel):
     sources: list[Source]
 
 
+class SummarizeRequest(BaseModel):
+    style: str = "concise"  # concise | detailed | bullet-points
+
+
+class SummarizeResponse(BaseModel):
+    document_id: str
+    filename: str
+    summary: str
+    model: str
+
+
 class ConversationMessage(BaseModel):
     question: str
     answer: str
