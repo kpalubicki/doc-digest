@@ -171,3 +171,91 @@ def test_vector_store_delete_collection_success():
 
     assert result is True
     mock_client.delete_collection.assert_called_once_with("legal")
+
+
+# --- /collections/{name}/export/markdown tests ---
+
+def test_export_collection_markdown_not_found():
+    with patch("app.api.collections.vector_store.get_collection_chunks", return_value={}):
+        r = client.get("/collections/ghost/export/markdown")
+    assert r.status_code == 404
+
+
+def test_export_collection_markdown_returns_file():
+    chunks = {
+        "report.pdf": ["Introduction text.", "Main findings here."],
+        "notes.txt": ["Quick notes from the meeting."],
+    }
+    with patch("app.api.collections.vector_store.get_collection_chunks", return_value=chunks):
+        r = client.get("/collections/research/export/markdown")
+    assert r.status_code == 200
+    assert "text/markdown" in r.headers["content-type"]
+    assert "research.md" in r.headers["content-disposition"]
+
+
+def test_export_collection_markdown_contains_docs():
+    chunks = {
+        "report.pdf": ["First chunk.", "Second chunk."],
+    }
+    with patch("app.api.collections.vector_store.get_collection_chunks", return_value=chunks):
+        r = client.get("/collections/research/export/markdown")
+    text = r.text
+    assert "# Collection: research" in text
+    assert "## report.pdf" in text
+    assert "First chunk." in text
+    assert "Second chunk." in text
+
+
+def test_export_collection_markdown_multiple_docs():
+    chunks = {
+        "a.pdf": ["chunk a"],
+        "b.txt": ["chunk b"],
+    }
+    with patch("app.api.collections.vector_store.get_collection_chunks", return_value=chunks):
+        r = client.get("/collections/research/export/markdown")
+    text = r.text
+    assert "## a.pdf" in text
+    assert "## b.txt" in text
+    assert "chunk a" in text
+    assert "chunk b" in text
+
+
+def test_vector_store_get_collection_chunks_unknown_collection():
+    from app.services import vector_store
+
+    mock_client = MagicMock()
+    mock_client.list_collections.return_value = []
+
+    with patch.object(vector_store, "_get_client", return_value=mock_client):
+        result = vector_store.get_collection_chunks("ghost")
+
+    assert result == {}
+
+
+def test_vector_store_get_collection_chunks_groups_by_filename():
+    from app.services import vector_store
+
+    mock_col = MagicMock()
+    mock_col.name = "research"
+    mock_client = MagicMock()
+    mock_client.list_collections.return_value = [mock_col]
+
+    mock_collection = MagicMock()
+    mock_collection.get.return_value = {
+        "ids": ["d1_0", "d1_1", "d2_0"],
+        "documents": ["chunk A0", "chunk A1", "chunk B0"],
+        "metadatas": [
+            {"filename": "a.pdf", "chunk_index": 0, "doc_id": "d1"},
+            {"filename": "a.pdf", "chunk_index": 1, "doc_id": "d1"},
+            {"filename": "b.txt", "chunk_index": 0, "doc_id": "d2"},
+        ],
+    }
+
+    with patch.object(vector_store, "_get_client", return_value=mock_client):
+        with patch.object(vector_store, "_get_collection", return_value=mock_collection):
+            result = vector_store.get_collection_chunks("research")
+
+    assert "a.pdf" in result
+    assert "b.txt" in result
+    assert result["a.pdf"] == ["chunk A0", "chunk A1"]
+    assert result["b.txt"] == ["chunk B0"]

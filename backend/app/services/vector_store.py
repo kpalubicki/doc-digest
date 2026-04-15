@@ -90,3 +90,33 @@ def delete_chunks(doc_id: str, collection_name: str = DEFAULT_COLLECTION):
     existing = collection.get(where={"doc_id": doc_id})
     if existing["ids"]:
         collection.delete(ids=existing["ids"])
+
+
+def get_collection_chunks(collection_name: str = DEFAULT_COLLECTION) -> dict[str, list[str]]:
+    """Return all chunks in a collection grouped by filename.
+
+    Returns {filename: [chunk, ...]} ordered by chunk_index.
+    Returns an empty dict if the collection doesn't exist or has no documents.
+    """
+    client = _get_client()
+    existing = [c.name for c in client.list_collections()]
+    if collection_name not in existing:
+        return {}
+
+    collection = _get_collection(collection_name)
+    result = collection.get(include=["documents", "metadatas"])
+    if not result["ids"]:
+        return {}
+
+    # Group chunks by filename, sorted by chunk_index
+    from collections import defaultdict
+    grouped: dict[str, list[tuple[int, str]]] = defaultdict(list)
+    for doc, meta in zip(result["documents"], result["metadatas"]):
+        filename = meta.get("filename", "unknown")
+        chunk_index = meta.get("chunk_index", 0)
+        grouped[filename].append((chunk_index, doc))
+
+    return {
+        filename: [chunk for _, chunk in sorted(chunks)]
+        for filename, chunks in grouped.items()
+    }
