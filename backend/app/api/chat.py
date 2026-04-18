@@ -18,6 +18,7 @@ def chat(request: ChatRequest):
         doc_id=request.document_id,
         n_results=request.n_results,
         collection_name=request.collection,
+        use_rerank=request.rerank,
     )
 
 

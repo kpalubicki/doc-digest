@@ -8,6 +8,7 @@ class DocumentInfo(BaseModel):
     file_type: str
     chunk_count: int
     uploaded_at: str
+    tags: list[str] = []
 
 
 class DocumentList(BaseModel):
@@ -24,6 +25,7 @@ class ChatRequest(BaseModel):
     document_id: Optional[str] = None  # None = search across all docs
     n_results: int = 4
     collection: str = "default"
+    rerank: bool = False
 
 
 class Source(BaseModel):
@@ -35,6 +37,16 @@ class Source(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[Source]
+
+
+class TagsRequest(BaseModel):
+    tags: list[str]
+
+
+class RerankRequest(BaseModel):
+    question: str
+    chunks: list[str]
+    top_n: int = 4
 
 
 class SummarizeRequest(BaseModel):

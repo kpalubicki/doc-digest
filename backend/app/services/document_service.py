@@ -66,15 +66,11 @@ async def save_and_parse(filename: str, data: bytes) -> tuple[str, list[str], st
         "file_type": suffix,
         "chunk_count": len(chunks),
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "tags": [],
     }
     _save_meta(meta)
 
     return doc_id, chunks, filename
-
-
-def list_documents() -> list[dict]:
-    meta = _load_meta()
-    return [{"id": doc_id, **info} for doc_id, info in meta.items()]
 
 
 def get_document(doc_id: str) -> Optional[dict]:
@@ -94,6 +90,25 @@ def get_document_text(doc_id: str) -> str | None:
     if not file_path.exists():
         return None
     return _extract_text(file_path, suffix)
+
+
+def set_tags(doc_id: str, tags: list[str]) -> bool:
+    """Replace the tag list for a document. Returns False if not found."""
+    meta = _load_meta()
+    if doc_id not in meta:
+        return False
+    meta[doc_id]["tags"] = sorted(set(t.strip().lower() for t in tags if t.strip()))
+    _save_meta(meta)
+    return True
+
+
+def list_documents(tag: str | None = None) -> list[dict]:
+    meta = _load_meta()
+    docs = [{"id": doc_id, **info} for doc_id, info in meta.items()]
+    if tag:
+        tag = tag.strip().lower()
+        docs = [d for d in docs if tag in d.get("tags", [])]
+    return docs
 
 
 def delete_document(doc_id: str) -> bool:

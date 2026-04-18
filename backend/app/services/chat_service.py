@@ -30,15 +30,63 @@ def _build_sources(hits: list[dict]) -> list[Source]:
     ]
 
 
+_RERANK_SYSTEM = (
+    "You are a relevance scorer. Given a question and a list of text chunks, "
+    "score each chunk from 0-10 for relevance to the question. "
+    "Return ONLY a JSON array of integers in the same order as the chunks. "
+    "Example: [8, 3, 10, 1]"
+)
+
+
+def rerank(question: str, hits: list[dict], top_n: int | None = None) -> list[dict]:
+    """Re-rank retrieved chunks by relevance using the LLM as a cross-encoder proxy.
+
+    Fetches up to 2× top_n candidates from the vector store then asks the LLM
+    to score each one. Returns hits sorted by score descending, trimmed to top_n.
+    """
+    if not hits:
+        return hits
+
+    chunks_text = "\n\n".join(
+        f"[{i}] {h['chunk'][:400]}" for i, h in enumerate(hits)
+    )
+    prompt = f"Question: {question}\n\nChunks:\n{chunks_text}\n\nScores:"
+
+    try:
+        response = ollama.chat(
+            model=settings.chat_model,
+            messages=[
+                {"role": "system", "content": _RERANK_SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        raw = response.message.content.strip()
+        import re
+        nums = re.findall(r"\d+", raw)
+        scores = [int(n) for n in nums[: len(hits)]]
+        # Pad if model returned fewer scores than chunks
+        while len(scores) < len(hits):
+            scores.append(0)
+        ranked = sorted(zip(scores, hits), key=lambda x: -x[0])
+        result = [h for _, h in ranked]
+        return result[:top_n] if top_n else result
+    except Exception:
+        return hits[:top_n] if top_n else hits
+
+
 def ask(question: str, doc_id: str | None = None, n_results: int = 4,
-        collection_name: str = DEFAULT_COLLECTION) -> ChatResponse:
-    hits = search(question, doc_id=doc_id, n_results=n_results, collection_name=collection_name)
+        collection_name: str = DEFAULT_COLLECTION, use_rerank: bool = False) -> ChatResponse:
+    fetch_n = n_results * 2 if use_rerank else n_results
+    hits = search(question, doc_id=doc_id, n_results=fetch_n, collection_name=collection_name)
 
     if not hits:
         return ChatResponse(
             answer="No relevant content found in the uploaded documents.",
             sources=[],
         )
+
+    if use_rerank:
+        hits = rerank(question, hits, top_n=n_results)
 
     context = _build_context(hits)
     prompt = f"Context from documents:\n\n{context}\n\nQuestion: {question}\n\nAnswer:"

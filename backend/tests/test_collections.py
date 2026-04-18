@@ -72,6 +72,7 @@ def test_chat_passes_collection_to_service():
         doc_id=None,
         n_results=4,
         collection_name="legal",
+        use_rerank=False,
     )
 
 
@@ -89,6 +90,7 @@ def test_chat_defaults_to_default_collection():
         doc_id=None,
         n_results=4,
         collection_name="default",
+        use_rerank=False,
     )
 
 
