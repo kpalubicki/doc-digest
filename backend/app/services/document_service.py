@@ -25,7 +25,9 @@ def _load_meta() -> dict:
 
 def _save_meta(meta: dict):
     meta_path = Path(settings.upload_path) / META_FILE
-    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    tmp_path = meta_path.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    tmp_path.replace(meta_path)  # atomic on POSIX, best-effort on Windows
 
 
 def _extract_text(file_path: Path, suffix: str) -> str:
